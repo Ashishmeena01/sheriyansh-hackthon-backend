@@ -112,16 +112,25 @@ const generateFallbackAIAnalysis = (examTitle, studentName, events, riskScore, e
 
   const concerns = [];
   if (eventCounts["PHONE_DETECTED"]) {
-    concerns.push(`${eventCounts["PHONE_DETECTED"]} instance(s) of potential mobile device detected in camera frame.`);
+    concerns.push(`📱 Mobile phone or unauthorized electronic device detected in camera (${eventCounts["PHONE_DETECTED"]} time${eventCounts["PHONE_DETECTED"] > 1 ? "s" : ""})`);
   }
   if (eventCounts["MULTIPLE_FACES"]) {
-    concerns.push(`${eventCounts["MULTIPLE_FACES"]} incident(s) with multiple persons visible simultaneously.`);
+    concerns.push(`👥 Multiple persons detected in camera view simultaneously (${eventCounts["MULTIPLE_FACES"]} time${eventCounts["MULTIPLE_FACES"] > 1 ? "s" : ""})`);
   }
   if (eventCounts["TAB_HIDDEN"]) {
-    concerns.push(`Exam window was switched/minimized ${eventCounts["TAB_HIDDEN"]} time(s).`);
+    concerns.push(`🪟 Exam tab was switched away or window lost focus (${eventCounts["TAB_HIDDEN"]} time${eventCounts["TAB_HIDDEN"] > 1 ? "s" : ""})`);
   }
   if (eventCounts["LOOKING_AWAY"]) {
-    concerns.push(`Gaze deviation recorded ${eventCounts["LOOKING_AWAY"]} time(s).`);
+    concerns.push(`👀 Prolonged gaze deviation / Looking away from screen (${eventCounts["LOOKING_AWAY"]} time${eventCounts["LOOKING_AWAY"] > 1 ? "s" : ""})`);
+  }
+  if (eventCounts["NO_FACE"]) {
+    concerns.push(`👤 Face not visible / Student stepped away from camera (${eventCounts["NO_FACE"]} time${eventCounts["NO_FACE"] > 1 ? "s" : ""})`);
+  }
+  if (eventCounts["CAMERA_INTERRUPTED"]) {
+    concerns.push(`📷 Camera covered, blocked, or feed interrupted (${eventCounts["CAMERA_INTERRUPTED"]} time${eventCounts["CAMERA_INTERRUPTED"] > 1 ? "s" : ""})`);
+  }
+  if (eventCounts["KEY_RESTRICTION"] || eventCounts["PROHIBITED_ACTION"]) {
+    concerns.push(`⌨️ Prohibited shortcut (Copy/Paste/DevTools) attempt was blocked`);
   }
 
   let summary = `Student ${studentName} completed "${examTitle}" with normal exam telemetry. No persistent anomalous patterns detected.`;
