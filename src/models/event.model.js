@@ -29,6 +29,8 @@ const eventSchema = new mongoose.Schema(
         "PHONE_DETECTED",
         "TAB_HIDDEN",
         "CAMERA_INTERRUPTED",
+        "PROHIBITED_ACTION",
+        "KEY_RESTRICTION",
       ],
       required: true,
     },

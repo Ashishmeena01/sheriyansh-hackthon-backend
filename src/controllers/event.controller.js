@@ -14,6 +14,8 @@ const VALID_EVENT_TYPES = [
   "PHONE_DETECTED",
   "TAB_HIDDEN",
   "CAMERA_INTERRUPTED",
+  "PROHIBITED_ACTION",
+  "KEY_RESTRICTION",
 ];
 
 // @desc    Record monitoring event with optional snapshot evidence
@@ -47,18 +49,20 @@ export const recordEvent = async (req, res, next) => {
       return sendError(res, "Attempt is not currently in progress", 400);
     }
 
-    // Deduplication check: check if same event type occurred in last 4 seconds
-    const recentDuplicate = await Event.findOne({
-      attemptId,
-      type,
-      occurredAt: { $gte: new Date(Date.now() - 4000) },
-    });
-
-    if (recentDuplicate) {
-      return sendSuccess(res, "Event throttled (duplicate)", {
-        eventId: recentDuplicate._id,
-        throttled: true,
+    // Deduplication check: only throttle rapid heartbeats if no snapshot is attached
+    if (!snapshotBase64) {
+      const recentDuplicate = await Event.findOne({
+        attemptId,
+        type,
+        occurredAt: { $gte: new Date(Date.now() - 3000) },
       });
+
+      if (recentDuplicate) {
+        return sendSuccess(res, "Event throttled (duplicate)", {
+          event: recentDuplicate,
+          throttled: true,
+        });
+      }
     }
 
     // Optional snapshot image stored in video/:studentId/allvideo/

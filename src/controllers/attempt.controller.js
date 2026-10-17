@@ -282,7 +282,8 @@ export const submitAttempt = async (req, res, next) => {
     // Compute updated risk score
     const finalRiskScore = await calculateAttemptRiskScore(attempt._id);
 
-    attempt.status = "submitted";
+    const { autoSubmitted, reason } = req.body || {};
+    attempt.status = autoSubmitted ? "auto_submitted" : "submitted";
     attempt.submittedAt = new Date();
     attempt.score = calculatedScore;
     attempt.totalMarks = exam.totalMarks;

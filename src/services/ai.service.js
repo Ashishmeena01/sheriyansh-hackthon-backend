@@ -58,12 +58,33 @@ Format:
   "keyConcerns": ["Concern 1", "Concern 2"]
 }`;
 
-    const message = await anthropic.messages.create({
-      model: model,
-      max_tokens: 1000,
-      temperature: 0.2,
-      messages: [{ role: "user", content: prompt }],
-    });
+    const candidateModels = [
+      process.env.ANTHROPIC_MODEL || "claude-3-5-sonnet-latest",
+      "claude-3-5-sonnet-20240620",
+      "claude-3-haiku-20240307",
+    ];
+
+    let message = null;
+    let usedModel = candidateModels[0];
+
+    for (const candidate of candidateModels) {
+      try {
+        message = await anthropic.messages.create({
+          model: candidate,
+          max_tokens: 1000,
+          temperature: 0.2,
+          messages: [{ role: "user", content: prompt }],
+        });
+        usedModel = candidate;
+        break;
+      } catch (err) {
+        console.warn(`Model ${candidate} failed (${err.message}), trying next candidate...`);
+      }
+    }
+
+    if (!message) {
+      throw new Error("No compatible Anthropic Claude model succeeded for this API key tier");
+    }
 
     const responseText = message.content[0]?.text || "{}";
     const cleanedJson = responseText.replace(/```json/g, "").replace(/```/g, "").trim();
@@ -71,7 +92,7 @@ Format:
 
     return {
       success: true,
-      provider: "claude-3-5-sonnet",
+      provider: `Claude 3.5 Sonnet (${usedModel})`,
       ...parsed,
       analyzedAt: new Date(),
     };
