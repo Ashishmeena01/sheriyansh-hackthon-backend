@@ -9,7 +9,7 @@ const userSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
       minlength: [2, "Name must be at least 2 characters long"],
-      maxlength: [50, "Name cannot exceed 50 characters"],
+      maxlength: [100, "Name cannot exceed 100 characters"],
     },
     email: {
       type: String,
@@ -30,12 +30,36 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
-      default: "user",
+      enum: ["teacher", "student", "admin"],
+      default: "student",
+    },
+    institution: {
+      type: String,
+      default: "University / Institute",
+      trim: true,
+    },
+    studentId: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    department: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    semester: {
+      type: String,
+      default: "",
+      trim: true,
     },
     avatar: {
       type: String,
       default: "",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -44,15 +68,10 @@ const userSchema = new mongoose.Schema(
 );
 
 // Hash password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) return;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Method to verify password
@@ -63,7 +82,7 @@ userSchema.methods.comparePassword = async function (enteredPassword) {
 // Method to generate JWT token
 userSchema.methods.generateAuthToken = function () {
   return jwt.sign(
-    { id: this._id, email: this.email, role: this.role },
+    { id: this._id, email: this.email, role: this.role, name: this.name },
     process.env.JWT_SECRET || "hackathon_default_secret_fallback_key",
     {
       expiresIn: process.env.JWT_EXPIRES_IN || "7d",

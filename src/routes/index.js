@@ -1,5 +1,9 @@
 import express from "express";
 import authRoutes from "./auth.routes.js";
+import examRoutes from "./exam.routes.js";
+import attemptRoutes from "./attempt.routes.js";
+import eventRoutes from "./event.routes.js";
+import teacherRoutes from "./teacher.routes.js";
 import { sendSuccess } from "../utils/apiResponse.js";
 import mongoose from "mongoose";
 
@@ -8,19 +12,20 @@ const router = express.Router();
 // Health Check route
 router.get("/health", (req, res) => {
   const dbStatus = mongoose.connection.readyState === 1 ? "connected" : "disconnected";
-  return sendSuccess(res, "Backend is healthy and running smoothly 🚀", {
+  return sendSuccess(res, "ProctorVision Backend is healthy and running smoothly 🚀", {
     status: "ok",
     database: dbStatus,
+    claudeAI: process.env.ANTHROPIC_API_KEY ? "active" : "rule-fallback-ready",
     uptime: `${Math.floor(process.uptime())} seconds`,
     timestamp: new Date().toISOString(),
   });
 });
 
-// Mount Routes
+// Mount Resource Routes
 router.use("/auth", authRoutes);
-
-// NOTE: Once hackathon topic is assigned, add new route groups here:
-// router.use("/products", productRoutes);
-// router.use("/posts", postRoutes);
+router.use("/exams", examRoutes);
+router.use("/attempts", attemptRoutes);
+router.use("/events", eventRoutes);
+router.use("/teacher", teacherRoutes);
 
 export default router;

@@ -2,15 +2,30 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import helmet from "helmet";
+import path from "path";
+import { fileURLToPath } from "url";
 import apiRoutes from "./routes/index.js";
 import { notFoundHandler, errorHandler } from "./middlewares/error.middleware.js";
+import { VIDEO_ROOT_DIR } from "./utils/storage.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
-// 1. Enable Morgan logging in development
+// 1. Security Headers
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// 2. Logging
 app.use(morgan("dev"));
 
-// 2. CORS configuration (Hackathon friendly: supports localhost, credentials & tunnels)
+// 3. CORS configuration (Hackathon friendly)
 const allowedOrigins = process.env.CLIENT_URL
   ? process.env.CLIENT_URL.split(",").map((url) => url.trim())
   : ["http://localhost:5173", "http://localhost:3000", "http://127.0.0.1:5173"];
@@ -18,16 +33,14 @@ const allowedOrigins = process.env.CLIENT_URL
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps, curl, postman)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      // For fast hackathon development, allow localhost origins dynamically
       if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
         return callback(null, true);
       }
-      return callback(null, true); // Permissive for hackathon
+      return callback(null, true);
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
@@ -35,33 +48,36 @@ app.use(
   })
 );
 
-// 3. Body parsers
+// 4. Body Parsers with 10mb limit for webcam snapshot base64 payloads
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
-// 4. Welcome route
+// 5. Serve video & snapshots static folder (video/:studentId/allvideo/...)
+app.use("/video", express.static(VIDEO_ROOT_DIR));
+
+// 6. Root status endpoint
 app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: "Sheryians Hackathon Backend API Server is Live! 🚀",
+    name: "ProctorVision API Server",
+    tagline: "Smarter Exams. Fairer Monitoring. Privacy by Design.",
     version: "1.0.0",
     endpoints: {
       health: "/api/v1/health",
-      auth: {
-        register: "POST /api/v1/auth/register",
-        login: "POST /api/v1/auth/login",
-        me: "GET /api/v1/auth/me",
-        logout: "POST /api/v1/auth/logout",
-      },
+      auth: "/api/v1/auth",
+      exams: "/api/v1/exams",
+      attempts: "/api/v1/attempts",
+      events: "/api/v1/events",
+      teacher: "/api/v1/teacher",
     },
   });
 });
 
-// 5. Mount API v1 router
+// 7. Mount API v1 router
 app.use("/api/v1", apiRoutes);
 
-// 6. 404 Handler & Global Error Handler
+// 8. 404 & Centralized Error Handler
 app.use(notFoundHandler);
 app.use(errorHandler);
 
