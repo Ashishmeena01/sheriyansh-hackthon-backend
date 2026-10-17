@@ -2,7 +2,7 @@ import { Event } from "../models/event.model.js";
 import { Attempt } from "../models/attempt.model.js";
 import { Review } from "../models/review.model.js";
 import { sendSuccess, sendError } from "../utils/apiResponse.js";
-import { emitToTeachers } from "../config/socket.js";
+import { emitToTeachers, emitToAttempt } from "../config/socket.js";
 import { saveStudentSnapshot } from "../utils/storage.js";
 import { calculateAttemptRiskScore } from "./attempt.controller.js";
 
@@ -175,12 +175,58 @@ export const reviewEvent = async (req, res, next) => {
       riskScore: updatedRiskScore,
     });
 
-    // Real-time broadcast
+    // If teacher confirms this incident as VALID, immediately auto-submit the student's exam!
+    let forceSubmitted = false;
+    if (decision === "valid") {
+      const attemptToSubmit = await Attempt.findById(event.attemptId);
+      if (attemptToSubmit && attemptToSubmit.status === "in_progress") {
+        attemptToSubmit.status = "auto_submitted";
+        attemptToSubmit.submittedAt = new Date();
+        attemptToSubmit.monitoringStatus = "ended";
+        attemptToSubmit.riskScore = Math.max(80, updatedRiskScore);
+        await attemptToSubmit.save();
+        forceSubmitted = true;
+
+        // Immediately trigger force submit on student's active exam room!
+        emitToAttempt(event.attemptId.toString(), "attempt:force_submit", {
+          attemptId: event.attemptId,
+          reason: "teacher_confirmed_violation",
+          eventType: event.type,
+          message: "Your exam was terminated and submitted by the teacher due to confirmed violation evidence.",
+        });
+
+        emitToTeachers("attempt:submitted", {
+          attemptId: attemptToSubmit._id,
+          examId: attemptToSubmit.examId,
+          student: attemptToSubmit.studentId,
+          score: attemptToSubmit.score,
+          totalMarks: attemptToSubmit.totalMarks,
+          riskScore: attemptToSubmit.riskScore,
+          submittedAt: attemptToSubmit.submittedAt,
+        });
+      }
+    }
+
+    // Real-time broadcast to teachers
     emitToTeachers("event:reviewed", {
       eventId: event._id,
       attemptId: event.attemptId,
       decision,
+      type: event.type,
       updatedRiskScore,
+      forceSubmitted,
+      reviewerName: req.user.name,
+    });
+
+    // Real-time broadcast directly to student's live exam session!
+    emitToAttempt(event.attemptId.toString(), "event:reviewed", {
+      eventId: event._id,
+      attemptId: event.attemptId,
+      decision, // 'false_alarm' or 'valid'
+      type: event.type,
+      notes: notes.trim(),
+      updatedRiskScore,
+      forceSubmitted,
       reviewerName: req.user.name,
     });
 
@@ -188,6 +234,7 @@ export const reviewEvent = async (req, res, next) => {
       review,
       event,
       updatedRiskScore,
+      forceSubmitted,
     });
   } catch (error) {
     next(error);

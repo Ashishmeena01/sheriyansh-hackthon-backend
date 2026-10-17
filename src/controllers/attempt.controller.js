@@ -32,6 +32,21 @@ export const calculateAttemptRiskScore = async (attemptId) => {
   return Math.min(100, rawScore);
 };
 
+// @desc    Get all exam attempts for the logged-in student
+// @route   GET /api/v1/attempts/my
+// @access  Private (Student)
+export const getMyAttempts = async (req, res, next) => {
+  try {
+    const attempts = await Attempt.find({ studentId: req.user._id })
+      .populate("examId", "title description durationMinutes totalMarks")
+      .sort({ createdAt: -1 });
+
+    return sendSuccess(res, "My attempts retrieved", attempts);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Start an exam attempt
 // @route   POST /api/v1/exams/:id/start
 // @access  Private (Student)

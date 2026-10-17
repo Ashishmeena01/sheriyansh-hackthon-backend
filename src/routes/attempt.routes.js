@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getMyAttempts,
   getAttempt,
   saveAnswer,
   submitAttempt,
@@ -16,6 +17,7 @@ const router = express.Router();
 
 router.use(protect);
 
+router.get("/my", getMyAttempts);
 router.get("/:id", getAttempt);
 router.put("/:id/answers/:questionId", saveAnswer);
 router.post("/:id/submit", submitAttempt);
