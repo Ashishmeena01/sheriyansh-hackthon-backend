@@ -14,7 +14,7 @@ export const initSocket = (httpServer) => {
         if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
           return callback(null, true);
         }
-        if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+        if (origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:") || origin.endsWith(".vercel.app")) {
           return callback(null, true);
         }
         return callback(null, true);
